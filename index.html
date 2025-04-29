@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jarvis Web Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: rgb(30, 255, 0);
+      text-align: center;
+      padding: 50px;
+      overflow: hidden;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 20px;
+      border-radius: 10px;
+      border: none;
+      background-color: #0000006c;
+      color: rgb(0, 255, 13);
+      cursor: pointer;
+    }
+
+    #output, #reminders, #clock {
+      margin-top: 30px;
+      font-size: 18px;
+    }
+
+    /* Holographic Effects */
+    #hologram-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .holo-circle, .holo-grid, .holo-wave {
+      position: absolute;
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    .holo-circle {
+      width: 200px;
+      height: 200px;
+      top: 20%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    .holo-grid {
+      width: 300px;
+      height: 300px;
+      top: 50%;
+      left: 70%;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(0, 255, 255, 0.1),
+        rgba(0, 255, 255, 0.1) 10px,
+        transparent 10px,
+        transparent 20px
+      );
+      transform: rotate(45deg);
+      animation: spin 1s linear infinite;
+    }
+
+    .holo-wave {
+      width: 100px;
+      height: 100px;
+      top: 70%;
+      left: 40%;
+      border-radius: 50%;
+      animation: pulse 3s infinite alternate;
+      background: radial-gradient(rgba(0, 255, 255, 0.2), transparent);
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg) scale(1);
+      }
+      to {
+        transform: rotate(360deg) scale(1.05);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎙️ Jarvis Web Assistant</h1>
+  <button onclick="startListening()">🎤 Click Me to speak</button>
+
+  <p id="clock">Time: --:--</p>
+  <p id="output">Awaiting your command...</p>
+  <p id="reminders">Reminders: None</p>
+
+  <!-- Holographic Display Elements -->
+  <div id="hologram-container">
+    <div class="holo-circle"></div>
+    <div class="holo-grid"></div>
+    <div class="holo-wave"></div>
+  </div>
+
+  <script>
+    // Clock & Assistant Logic
+    const clockDisplay = document.getElementById("clock");
+    const remindersDisplay = document.getElementById("reminders");
+    const output = document.getElementById("output");
+
+    const synth = window.speechSynthesis;
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    const reminders = [];
+
+    function updateClock() {
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      clockDisplay.textContent = "Time: " + time;
+
+      reminders.forEach((reminder) => {
+        if (!reminder.triggered && time === reminder.time) {
+          speak("Reminder: " + reminder.text);
+          reminder.triggered = true;
+        }
+      });
+    }
+    setInterval(updateClock, 1000);
+
+    function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      synth.speak(utter);
+      output.textContent = "Jarvis: " + text;
+    }
+
+    function startListening() {
+      recognition.start();
+      output.textContent = "Listening...";
+    }
+
+    recognition.onresult = function(event) {
+      const command = event.results[0][0].transcript.toLowerCase();
+      output.textContent = "You: " + command;
+
+      if (command.includes("remind me")) {
+        const timeMatch = command.match(/\b(\d{1,2}:\d{2})\s*(am|pm)?/);
+        const task = command.replace(/remind me to|at.*$/gi, "").trim();
+        if (timeMatch) {
+          let time = timeMatch[1];
+          const period = timeMatch[2] || "";
+          if (period) {
+            const [hours, minutes] = time.split(":").map(Number);
+            if (period === "pm" && hours < 12) time = `${hours + 12}:${minutes}`;
+          }
+          reminders.push({ text: task, time: time, triggered: false });
+          remindersDisplay.textContent = "Reminders: " + reminders.map(r => `${r.text} at ${r.time}`).join(", ");
+          speak(`Reminder set for ${task} at ${time}`);
+        } else {
+          speak("Please specify the time like 4:30 PM.");
+        }
+
+      } else if (command.includes("weather")) {
+        const city = command.split("in")[1]?.trim() || "New York";
+        getWeather(city);
+
+      } else if (command.includes("play") && command.includes("spotify")) {
+        const query = command.replace("play", "").replace("on spotify", "").trim();
+        speak("Playing " + query + " on Spotify");
+        window.open("https://open.spotify.com/search/" + encodeURIComponent(query), "_blank");
+
+      } else if (command.includes("youtube")) {
+        const query = command.replace("play", "").replace("on youtube", "").trim();
+        speak("Searching YouTube for " + query);
+        window.open("https://www.youtube.com/results?search_query=" + encodeURIComponent(query), "_blank");
+
+      } else if (command.includes("gmail") || command.includes("check email")) {
+        speak("Opening Gmail");
+        window.open("https://mail.google.com", "_blank");
+
+      } else if (command.includes("calendar")) {
+        speak("Opening your Google Calendar");
+        window.open("https://calendar.google.com", "_blank");
+
+      } else if (command.includes("drive")) {
+        speak("Opening Google Drive");
+        window.open("https://drive.google.com", "_blank");
+
+      } else {
+        speak("Sorry, I didn't understand that.");
+      }
+    };
+
+    recognition.onerror = function() {
+      speak("Oops, I didn't catch that.");
+    };
+
+    function getWeather(city) {
+      const apiKey = "YOUR_OPENWEATHER_API_KEY";
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.main) {
+            const weather = `The weather in ${city} is ${data.weather[0].description}, temperature is ${data.main.temp} degrees Celsius.`; 
+            speak(weather);
+          } else {
+            speak("I couldn't find the weather for that location.");
+          }
+        })
+        .catch(() => {
+          speak("Failed to fetch the weather.");
+        });
+    }
+  </script>
+</body>
+</html>
