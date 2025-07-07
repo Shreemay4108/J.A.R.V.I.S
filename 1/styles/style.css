@@ -1,0 +1,12 @@
+body {
+    background-color: #f9f9f9;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  .hero-section {
+    background-image: url('../assets/images.jpeg');
+    background-size: cover;
+    background-position: center;
+    color: white;
+  }
+  
